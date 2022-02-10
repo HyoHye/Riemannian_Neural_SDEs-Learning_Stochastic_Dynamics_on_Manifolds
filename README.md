@@ -1,2 +1,2 @@
-# Riemannian_Neural_SDEs-Learning_Stochastic_Dynamics_on_Manifolds
-Riemannian Neural SDEs: Learning Stochastic Dynamics on Manifolds
+# Riemannian Neural SDEs: Learning Stochastic Dynamics on Manifolds
+Submitted to the ICLR 2022 Workshop on Geometrical and Topological Representation Learning
