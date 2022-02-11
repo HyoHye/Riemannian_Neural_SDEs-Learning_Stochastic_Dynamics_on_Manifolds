@@ -235,7 +235,7 @@ if __name__ == '__main__':
 
             PlotStream().run() # csv_ver 이름
             np_batch = np.array(batch)
-            np.save('./noisy_batch/data'+str(format(npy_ver,'04'))+'.npy',np_batch)
+            np.save('./noisy_batch/data'+str(format(npy_ver,'05'))+'.npy',np_batch)
             batch.clear()
             npy_ver+=1
             i=0
