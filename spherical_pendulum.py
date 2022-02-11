@@ -22,6 +22,8 @@ Y_INIT = [
     0, # theta'
     1 * math.pi / 4.3, # phi'
 ]
+
+batch = []
 # Nice divisors are divisors (2.5,4.2), (4, 6), (5, 2) and (1.1, inf)
 
 PENDULUM_LENGTH = 3 # [m] # used in integration scheme as well as for plots
@@ -151,6 +153,7 @@ def _plot_pendulum(fig,csv_ver, ax, points):
     BOWL_RESOLUTION = 24
 
     # Reset axes
+
     ax.cla()
     ax.set_xlim(-BOX_SIZE, BOX_SIZE)
     ax.set_ylim(-BOX_SIZE, BOX_SIZE)
@@ -159,39 +162,30 @@ def _plot_pendulum(fig,csv_ver, ax, points):
     ax.yaxis.set_ticklabels([])
     ax.zaxis.set_ticklabels([])
 
+
     # Plot bowl
     us = np.linspace(0, 2 * np.pi, BOWL_RESOLUTION)
-    vs = np.linspace(0, np.pi / 3, BOWL_RESOLUTION)
+    vs = np.linspace(0, np.pi, BOWL_RESOLUTION)
     xs = np.outer(np.cos(us), np.sin(vs))
     ys = np.outer(np.sin(us), np.sin(vs))
     zs = np.outer(np.ones(np.size(us)), np.cos(vs))
     coords = [PENDULUM_LENGTH * vs for vs in [xs, ys, -zs]] # Note: scaled and inverted z-axis
-    ax.plot_surface(*coords, linewidth=0, antialiased=False, cmap="coolwarm", alpha=.12)
+    ax.plot_surface(*coords, linewidth=0, antialiased=False, cmap="jet", alpha=.12)
 
     # Plot lines and points
-    ax.plot3D(*transpose([[0, 0, 1.2 * BOX_SIZE], [0, 0, PENDULUM_LENGTH]]), 'black', linewidth=1)
-    ax.plot3D(*transpose([[0, 0, PENDULUM_LENGTH], points[-1]]), 'black', linewidth=1)
-    ax.scatter3D(0, 0, PENDULUM_LENGTH, s=10, c="blue")
-    ax.scatter3D(*transpose([points[-1]]), s=80, c="blue")
-    ax.scatter3D(*transpose(points), s=1, c="green")
+    ax.plot3D(*transpose([[0, 0, 1.2 * BOX_SIZE], [0, 0, PENDULUM_LENGTH]]), 'brown', linewidth=1)
+    ax.plot3D(*transpose([[0, 0, PENDULUM_LENGTH], points[-1]]), 'brown', linewidth=1)
+    ax.scatter3D(0, 0, PENDULUM_LENGTH, s=10, c="navy")
+    ax.scatter3D(*transpose([points[-1]]), s=80, c="navy")
+    ax.scatter3D(*transpose(points), s=1, c="red")
 
     csv_ver_name = format(csv_ver,'04') # 파일이름은 숫자 네자리 맞춰서 이름짓기
     # print('현재 csv ver : ',csv_ver_name)
     #  처음이면 우선 csv 파일 생성성
-    if i==0:
-        f=open('./batch/data'+str(csv_ver_name)+'.csv','w',newline='')
-        f.close()
-    # 128개까지만 csv 작성
-    if i<128:
-        # Write data on csv file
-        # print('(x,y,z) : ',points[-1])
-        f = open('./batch/data'+str(csv_ver_name)+'.csv','a', newline='')
-        wr = csv.writer(f)
-        wr.writerow(points[-1])
-        f.close()
 
-    else:
-        print("128개의 data 추출 완료")
+    batch.append(points[-1])
+    if i==128:
+        print('128개의 data 추출 완료')
         plt.close(fig)
         return
     i+=1
@@ -226,17 +220,22 @@ class PlotStream:
 
 if __name__ == '__main__':
     # tmp = Y_INIT
-    for m in range(-10,10,1):
-        for j in range(-10,10,1):
+    npy_ver=0
+    for m in range(-8,8,1): # 16
+        for j in range(-312,313,1): # 625
             _m=m/10
-            _j=j/10
+            _j=j/100
+            _m+=1.6 # (최대값 확인용)
+            _j+=3 # (최대값 확인용)
             print('--------------------------------------------------------')
             print('현재 m,j : ',_m,', ',_j)
             Y_INIT = [math.pi / 2.5+_m, 0+_j, 0, 1 * math.pi / 4.3] # change initial value
             print('현재 Y_INIT : ',Y_INIT)
 
             PlotStream().run() # csv_ver 이름
-
-            csv_ver+=1
+            np_batch = np.array(batch)
+            np.save('./batch/data'+str(format(npy_ver,'04'))+'.npy',np_batch)
+            batch.clear()
+            npy_ver+=1
             i=0
             # print('한바퀴 돌았음')
