@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import csv
 import os
+import numpy as np
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
@@ -10,14 +11,7 @@ batches = []
 DIR = './batch/'
 
 def getValue(filename):
-    f = open(filename, 'r')
-    rdr = csv.reader(f)
-    points=[]
-    for line in rdr:
-        if len(line):
-            points_float = list(map(float, line)) # float로 변환
-            points.append(points_float)
-    # points = torch.tensor(points)
+    points = np.load(filename)
     batches.append(points)
 
 def run():
