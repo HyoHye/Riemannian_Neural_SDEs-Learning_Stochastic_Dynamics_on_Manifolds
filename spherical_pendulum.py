@@ -6,7 +6,7 @@ https://youtu.be/rQwnOZFuYsU
 """
 
 import math
-import matplotlib.pyplot as plt
+
 import numpy as np
 
 mu = 0
@@ -15,26 +15,9 @@ sigma = 0.03
 SEC_TO_MILLI_SEC = 1000
 GRAVITY_ACC = 9.80665  # [m/s^2]
 
-Y_INIT = [
-    math.pi / 2.5, # theta
-    0, # phi
-    0, # theta'
-    1 * math.pi / 4.3, # phi'
-]
-
-batch = []
-# Nice divisors are divisors (2.5,4.2), (4, 6), (5, 2) and (1.1, inf)
-
 PENDULUM_LENGTH = 1 # [m] # used in integration scheme as well as for plots
 
 DT = 1 / 30
-
-
-def transpose(points):
-    if not points:
-        return []
-    dim = len(points[0])
-    return [[point[i] for point in points] for i in range(dim)]
 
 
 def angles_to_unit_sphere(theta, phi):
@@ -134,23 +117,12 @@ def _pendulum_physical_space():
         sphere_point[2] *= -1 # flip z-axis
         point = [PENDULUM_LENGTH * p for p in sphere_point]
         yield point
-global cnt
-def _plot_pendulum(points):
-    global cnt
-    batch.append(points[-1])
-    if cnt==128:
-        return
-    else:
-        cnt += 1
-
 
 class PlotStream:
     __FPS = 60  # [1 / s]
     __INTERVAL = SEC_TO_MILLI_SEC / __FPS  # [ms]
 
     def __init__(self):
-        self.__fig = plt.figure(figsize=(8, 8))
-        self.__ax = self.__fig.gca(projection='3d')
         self.__stream = _pendulum_physical_space()
         self.__past_points = []
 
@@ -159,29 +131,25 @@ class PlotStream:
         Warning: Render loops might work different on different OS's and so
         this might need different arguments and a return value for __next_frame
         """
-        next_point = next(self.__stream)
-        self.__past_points.append(next_point)
-        _plot_pendulum(self.__past_points)
+        for i in range(128):
+            next_point = next(self.__stream)
+            self.__past_points.append(next_point)
         return self.__past_points
 
 
 if __name__ == '__main__':
-    # tmp = Y_INIT
-    cnt = 0
     npy_ver = 0
     batch_np = np.empty((10000, 128, 3))
 
-    x = np.linspace(-math.pi / 2, math.pi / 2, 10)
-    y = np.linspace(-math.pi / 2, math.pi / 2, 10)
+    x = np.linspace(-math.pi / 5, math.pi / 5, 100)
+    y = np.linspace(-math.pi / 5, math.pi / 5, 100)
 
     for _m in x:
         for _j in y:
-            Y_INIT = [math.pi / 2.5+_m, 0+_j, 0, 1 * math.pi / 4.3] # change initial value
+            Y_INIT = [math.pi / 2.5 + _m, 0 + _j, 0, 1 * math.pi / 4.3] # change initial value
 
-            PlotStream().run() # csv_ver 이름
-            print("batch: ", batch)
-            batch_np[npy_ver, :] = np.array(batch)
+            points = PlotStream().run()
+            batch_np[npy_ver, :] = np.array(points)
             npy_ver+= 1
-            cnt = 0
 
     np.save('./data/without_noise.npy', batch_np)
