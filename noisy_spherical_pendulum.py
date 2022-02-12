@@ -6,12 +6,9 @@ https://youtu.be/rQwnOZFuYsU
 """
 
 import math
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
 import random
+
+import numpy as np
 
 mu = 0
 sigma = 0.03
@@ -19,34 +16,18 @@ sigma = 0.03
 SEC_TO_MILLI_SEC = 1000
 GRAVITY_ACC = 9.80665  # [m/s^2]
 
-Y_INIT = [
-    math.pi / 2.5, # theta
-    0, # phi
-    0, # theta'
-    1 * math.pi / 4.3, # phi'
-]
-
-batch = []
-# Nice divisors are divisors (2.5,4.2), (4, 6), (5, 2) and (1.1, inf)
-
-PENDULUM_LENGTH = 3 # [m] # used in integration scheme as well as for plots
+PENDULUM_LENGTH = 1 # [m] # used in integration scheme as well as for plots
 
 DT = 1 / 30
 
-csv_ver=0
-
-
-def transpose(points):
-    if not points:
-        return []
-    dim = len(points[0])
-    return [[point[i] for point in points] for i in range(dim)]
-
 
 def angles_to_unit_sphere(theta, phi):
-    x = math.sin(theta) * math.cos(phi)+random.gauss(mu,sigma)
-    y = math.sin(theta) * math.sin(phi)+random.gauss(mu,sigma)
-    z = math.cos(theta)+random.gauss(mu,sigma)
+    theta += random.gauss(mu, sigma)
+    phi += random.gauss(mu, sigma)
+
+    x = math.sin(theta) * math.cos(phi)
+    y = math.sin(theta) * math.sin(phi)
+    z = math.cos(theta)
     return [x, y, z]
 
 
@@ -64,16 +45,12 @@ def integrate(f, dt, y_init, t_init=0, t_fin=float('inf')):
     dy = _dy_rk4_method(f, dt)
     y = y_init
     t = t_init
-    # print('integrate_y : ',y)
 
     while t < t_fin:
-        # print('yield y')
         yield y
 
         y += dy(t, y)
         t += dt
-        # print('y+= ; ',y)
-        # print('t+= ; ',t)
 
 
 def _dy_rk4_method(f, dt):
@@ -89,13 +66,10 @@ def _dy_rk4_method(f, dt):
         k2 = f_(t + dt / 2, y + k1 * dt / 2)
         k3 = f_(t + dt / 2, y + k2 * dt / 2)
         k4 = f_(t + dt, y + k3 * dt)
-        # print('k1, k2, k3, k4 : ',k1,', ',k2,', ',k3,', ',k4)
         WEIGHTS = [1, 2, 2, 1]
         f_rk4 = weighted_mean(WEIGHTS, [k1, k2, k3, k4])
-        # print('f_rk4 : ',f_rk4)
 
         return f_rk4 * dt
-    # print('return dy')
     return dy
 
 
@@ -143,61 +117,17 @@ def _pendulum_physical_space():
         return y[:dof] # Project out FIRST two components
 
     for y in _pendulum_configuration_space():
-        sphere_point = angles_to_unit_sphere(*q(y))
+        sphere_point = angles_to_unit_sphere(*q(y)) # Observation할 때 noise
         sphere_point[2] *= -1 # flip z-axis
         point = [PENDULUM_LENGTH * p for p in sphere_point]
+
         yield point
-
-global i
-i=0
-def _plot_pendulum(fig,csv_ver, ax, points):
-    global i
-    BOX_SIZE = 1.2 * PENDULUM_LENGTH
-    BOWL_RESOLUTION = 24
-
-    # Reset axes
-    ax.cla()
-    ax.set_xlim(-BOX_SIZE, BOX_SIZE)
-    ax.set_ylim(-BOX_SIZE, BOX_SIZE)
-    ax.set_zlim(-BOX_SIZE / 1.2, BOX_SIZE)
-    ax.xaxis.set_ticklabels([])
-    ax.yaxis.set_ticklabels([])
-    ax.zaxis.set_ticklabels([])
-
-    # Plot bowl
-    us = np.linspace(0, 2 * np.pi, BOWL_RESOLUTION)
-    vs = np.linspace(0, np.pi / 3, BOWL_RESOLUTION)
-    xs = np.outer(np.cos(us), np.sin(vs))
-    ys = np.outer(np.sin(us), np.sin(vs))
-    zs = np.outer(np.ones(np.size(us)), np.cos(vs))
-    coords = [PENDULUM_LENGTH * vs for vs in [xs, ys, -zs]] # Note: scaled and inverted z-axis
-    ax.plot_surface(*coords, linewidth=0, antialiased=False, cmap="cool", alpha=.12)
-
-    # Plot lines and points
-    ax.plot3D(*transpose([[0, 0, 1.2 * BOX_SIZE], [0, 0, PENDULUM_LENGTH]]), 'brown', linewidth=1)
-    ax.plot3D(*transpose([[0, 0, PENDULUM_LENGTH], points[-1]]), 'brown', linewidth=1)
-    ax.scatter3D(0, 0, PENDULUM_LENGTH, s=10, c="navy")
-    ax.scatter3D(*transpose([points[-1]]), s=80, c="navy")
-    ax.scatter3D(*transpose(points), s=1, c="red")
-
-    csv_ver_name = format(csv_ver,'04') # 파일이름은 숫자 네자리 맞춰서 이름짓기
-    # print('현재 csv ver : ',csv_ver_name)
-    #  처음이면 우선 csv 파일 생성성
-
-    batch.append(points[-1])
-    if i==128:
-        print('128개의 data 추출 완료')
-        plt.close(fig)
-        return
-    i+=1
 
 class PlotStream:
     __FPS = 60  # [1 / s]
     __INTERVAL = SEC_TO_MILLI_SEC / __FPS  # [ms]
 
     def __init__(self):
-        self.__fig = plt.figure(figsize=(8, 8))
-        self.__ax = self.__fig.gca(projection='3d')
         self.__stream = _pendulum_physical_space()
         self.__past_points = []
 
@@ -206,37 +136,25 @@ class PlotStream:
         Warning: Render loops might work different on different OS's and so
         this might need different arguments and a return value for __next_frame
         """
-        print()
-        _animation = matplotlib.animation.FuncAnimation(self.__fig, self.__next_frame, interval=self.__INTERVAL) # blit=True
-        plt.show()
-
-    def __next_frame(self, i):
-        next_point = next(self.__stream)
-        self.__past_points.append(next_point)
-        _plot_pendulum(self.__fig,csv_ver,self.__ax, self.__past_points)
-        # print(i, next_point) # Uncomment to print stream of pendulum points
-        # return self.__ax,
-        # plt.pause(0.03)
+        for i in range(128):
+            next_point = next(self.__stream)
+            self.__past_points.append(next_point)
+        return self.__past_points
 
 
 if __name__ == '__main__':
-    # tmp = Y_INIT
-    npy_ver=0
-    for m in range(-8,8,1):
-        for j in range(-312,313,1):
-            _m=m/10
-            _j=j/100
-            # _m+=1.6 # 최댓값 확인용
-            # _j+=6 # 최댓값 확인용
-            print('--------------------------------------------------------')
-            print('현재 m,j : ',_m,', ',_j)
-            Y_INIT = [math.pi / 2.5+_m, 0+_j, 0, 1 * math.pi / 4.3] # change initial value
-            print('현재 Y_INIT : ',Y_INIT)
+    npy_ver = 0
+    batch_np = np.empty((10000, 128, 3))
 
-            PlotStream().run() # csv_ver 이름
-            np_batch = np.array(batch)
-            np.save('./noisy_batch/data'+str(format(npy_ver,'05'))+'.npy',np_batch)
-            batch.clear()
-            npy_ver+=1
-            i=0
-            # print('한바퀴 돌았음')
+    x = np.linspace(-math.pi / 5, math.pi / 5, 100)
+    y = np.linspace(-math.pi / 5, math.pi / 5, 100)
+
+    for _m in x:
+        for _j in y:
+            Y_INIT = [math.pi / 2.5 + _m, 0 + _j, 2, 1 * math.pi / 1] # change initial value
+
+            points = PlotStream().run()
+            batch_np[npy_ver, :] = np.array(points)
+            npy_ver+= 1
+
+    np.save('./data/with_noise.npy', batch_np)
