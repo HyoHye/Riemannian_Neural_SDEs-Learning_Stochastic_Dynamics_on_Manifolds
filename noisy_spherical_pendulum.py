@@ -12,15 +12,21 @@ import numpy as np
 
 mu = 0
 sigma = 0.03
+B = 10000 # Batch
+T = 128 # Step
 
 SEC_TO_MILLI_SEC = 1000
 GRAVITY_ACC = 9.80665  # [m/s^2]
 
-Y_INIT = [1, 1, 1, 1]
-
+Y_INIT = [
+    math.pi / 2.5, # theta
+    0, # phi
+    0, # theta'
+    1 * math.pi / 4.3, # phi'
+]
 PENDULUM_LENGTH = 1 # [m] # used in integration scheme as well as for plots
 
-DT = 1 / 30
+DT = 1 / 50
 
 
 def angles_to_unit_sphere(theta, phi):
@@ -100,6 +106,15 @@ def _pendulum_configuration_space():
     def d2q(y):
         theta, _phi, d_theta, d_phi = y
 
+        if theta>=math.pi/2:
+            tan = 10
+        elif theta <= -math.pi/2: # theta가 0보다 작아질 일이 없지 않나..?
+            tan = -10
+        elif theta ==0:
+            tan = 0.01
+        else:
+            tan = math.tan(theta)
+
         d2_theta = (d_phi**2 * math.cos(theta) - GRAVITY_ACC / PENDULUM_LENGTH) * math.sin(theta)
         d2_phi = -2 * d_theta * d_phi / math.tan(theta)
 
@@ -138,22 +153,30 @@ class PlotStream:
         Warning: Render loops might work different on different OS's and so
         this might need different arguments and a return value for __next_frame
         """
-        for i in range(128):
+        for i in range(T):
             next_point = next(self.__stream)
             self.__past_points.append(next_point)
         return self.__past_points
 
 
-def generate_noisy_spherical_pendulum_dataset():
-    npy_ver = 0
-    batch_np = np.empty((10000, 128, 3))
+def generate_noisy_spherical_pendulum_dataset(mu=0, sigma=0.03,B=10000, T = 128):
+    mu = mu
+    sigma = sigma
+    B = B # Batch
+    T = T # Step
 
-    x = np.linspace(-math.pi / 5, math.pi / 5, 100)
-    y = np.linspace(-math.pi / 5, math.pi / 5, 100)
+
+    npy_ver = 0
+    batch_np = np.empty((B, T, 3))
+
+    x = np.linspace(-math.pi / 5, math.pi / 5, int(math.sqrt(B)))
+    y = np.linspace(-math.pi / 5, math.pi / 5, int(math.sqrt(B)))
 
     for _m in x:
         for _j in y:
-            Y_INIT = [math.pi / 2.5 + _m, 0 + _j, 2, 1 * math.pi / 1] # change initial value
+            v_theta = random.uniform(0,1) # random initial theta velocity
+            v_phi = random.uniform(0,1) # random initial phi velocity
+            Y_INIT = [-1+_m, 0+_j, 0+v_theta, 0.3+v_phi] # change initial value
 
             points = PlotStream().run()
             batch_np[npy_ver, :] = np.array(points)
