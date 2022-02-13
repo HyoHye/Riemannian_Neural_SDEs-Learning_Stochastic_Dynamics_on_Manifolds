@@ -1,48 +1,49 @@
-import torch
-import torch.nn.functional as F
-import csv
-import os
 import numpy as np
+import torch
 
-from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 
-batches = []
-DIR = './batch/'
+TRAIN_RATIO = 0.8
+VALIDATION_RATIO = 0.1
+TEST_RATIO = 0.1
 
-def getValue(filename):
-    points = np.load(filename)
-    batches.append(points)
-
-def run():
-    dir_list = os.listdir(DIR)
-    for item in dir_list:
-        getValue(DIR+str(item))
-
-run()
 
 class CustomDataset(Dataset):
-    def __init__(self):
-        self.data = batches
+    def __init__(self, data):
+        self.data = data
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        x = torch.tensor(list(self.data[idx]))
+        x = self.data[idx]
         return x
 
-dataset = CustomDataset()
-dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
-print(dataloader)
-print('==Data==')
-for idx,data in enumerate(dataloader):
-    print(data)
+def load_data(data_path, batch_size=1, nb_workers=0):
+    """
+    Loads data from CustomDataset.
+    Args:
+        - data_path: path to dataset
+        - batch_size: train and test batch size
+        - nb_workers: number of workers for dataloader
+    """
 
-# T=128
-# initial value를 random point로 해서
-# batch를 시작점으로 잡고 하기
-# data size는 10000개 (initial point 10000개)
-# T 는 128
-# (x,y,z)는 3고정
+    data = torch.tensor(np.load(data_path))
+    dataset = CustomDataset(data)
+
+    train_len = int(len(dataset)*TRAIN_RATIO)
+    validation_len = int(len(dataset)*VALIDATION_RATIO)
+
+    train_dataset = dataset[:train_len]
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers = nb_workers)
+
+    validation_dataset = dataset[train_len:train_len+validation_len]
+    validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers = nb_workers)
+
+    test_dataset = dataset[train_len+validation_len:]
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers = nb_workers)
+
+
+    return train_loader, validation_loader, test_loader
