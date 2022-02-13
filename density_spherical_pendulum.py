@@ -16,6 +16,8 @@ sigma = 0.03
 SEC_TO_MILLI_SEC = 1000
 GRAVITY_ACC = 9.80665  # [m/s^2]
 
+Y_INIT = [1, 1, 1, 1]
+
 PENDULUM_LENGTH = 1 # [m] # used in integration scheme as well as for plots
 
 DT = 1 / 30
@@ -144,7 +146,7 @@ class PlotStream:
         return self.__past_points
 
 
-if __name__ == '__main__':
+def generate_density_spherical_pendulum_dataset():
     npy_ver = 0
     batch_np = np.empty((10000, 128, 128, 3))
 
@@ -161,4 +163,6 @@ if __name__ == '__main__':
             batch_np[npy_ver, :] = np.array(points)
             npy_ver += 1
 
-    np.save('./data/DensitySphericalPendulum.npy', batch_np)
+    # np.save('./data/DensitySphericalPendulum.npy', batch_np)
+
+    return batch_np
